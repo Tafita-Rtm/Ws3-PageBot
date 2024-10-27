@@ -1,43 +1,37 @@
 const axios = require("axios");
 const fs = require("fs");
 const cmdLoc = __dirname + "/commands";
-const commands = [];
-const descriptions = [];
+const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN || "EAASdkqwWhMsBO2iyezebDQMJZCL6tnembRvSDA4t0wW5mSaSTyCLvlxQswGBAv1pJNxPtfRZCZCZAeFWEvo92fWh3GZBY0ZAZBBTflei3C40upw7ZA8ZAygYhgZBZCceZClGgCG8tg2RSqk56wQBhnVPaXmnMVWxPzZC1NuuDbzZBolzxG55U94FdvIo5EJh60KCHsLrZApUgZDZD";
 
-module.exports = {
-  async loadCommands() {
-    fs.readdir(cmdLoc, {}, async (err, files) => {
-      for await (const name of files) {
-        const readCommand = require(cmdLoc + "/" + name);
-        const commandName = readCommand.name || name.replace(".js", "").toLowerCase();
-        const description = readCommand.description || "No description provided.";
-        commands.push(commandName);
-        descriptions.push(description);
-        console.log(`${commandName} loaded`);
-      }
-      console.log("Commands loaded successfully.");
-    });
-  },
-
-  async sendMessage(senderId, message, pageAccessToken) {
-    return await new Promise(async (resolve, reject) => {
+const api = {
+  async sendMessage(senderId, message) {
+    return new Promise(async (resolve, reject) => {
       try {
-        const sendMsg = await axios.post(`https://graph.facebook.com/v21.0/me/messages`, {
+        const response = await axios.post(`https://graph.facebook.com/v11.0/me/messages`, {
           recipient: { id: senderId },
           message
         }, {
-          params: {
-            access_token: pageAccessToken
-          },
-          headers: {
-            "Content-Type": "application/json"
-          }
+          params: { access_token: PAGE_ACCESS_TOKEN },
+          headers: { "Content-Type": "application/json" }
         });
-        resolve(sendMsg.data);
+        resolve(response.data);
       } catch (error) {
-        console.error('Error sending message:', error);
+        console.error("Erreur lors de l'envoi du message:", error);
         reject(error);
       }
     });
+  },
+
+  async loadCommands() {
+    const commands = {};
+    const files = fs.readdirSync(cmdLoc);
+    files.forEach(file => {
+      const command = require(`${cmdLoc}/${file}`);
+      const commandName = file.replace(".js", "");
+      commands[commandName] = command;
+    });
+    return commands;
   }
 };
+
+module.exports = api;
