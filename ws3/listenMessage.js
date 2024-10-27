@@ -1,129 +1,77 @@
 const api = require('./api');
-const prefix = api.prefix;
 
-const getStarted = async (send) => send({
+let storedText = "";  // Variable pour stocker le texte initial de l'utilisateur
+
+const getLanguageButtons = async (send) => send({
     attachment: {
       type: "template",
       payload: {
         template_type: "button",
-        text: api.introduction,
+        text: "Sélectionnez la langue dans laquelle traduire votre message :",
         buttons: [
           {
             type: "postback",
-            title: "Commands",
-            payload: "HELP"
+            title: "Malagasy",
+            payload: "MALAGASY"
           },
           {
             type: "postback",
-            title: "About",
-            payload: "ABOUT"
+            title: "Français",
+            payload: "FRANCAIS"
           },
           {
             type: "postback",
-            title: "Prefix",
-            payload: "PREFIX"
+            title: "Anglais",
+            payload: "ANGLAIS"
           }
         ]
       }
-}});
+    }
+});
+
 const listenMessage = async (event, pageAccessToken) => {
   const senderID = event.sender.id;
   const message = event.message.text;
+
   if (!senderID || !message) return;
-  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : {text}, pageAccessToken),
-  [command, ...args] = (message || "")
-    .trim()
-    .toLowerCase()
-    .startsWith(prefix.toLowerCase()) ?
-    (message || "")
-    .trim()
-    .substring(prefix.length)
-    .trim()
-    .split(/\s+/)
-    .map(arg => arg.trim()) : [],
-    admin = api.admin.some(id => id === senderID);
-    switch (message.toLowerCase().trim()) {
-    case "prefix": {
-      return send(`Hello! My prefix is ${prefix}`);
-    }
-    default: {
-      if (!message) return;
-      if (["hi", "wie", "wieai", "wiegine", "get started"]
-        .some(text => text === message.toLowerCase().trim())) {
-         return getStarted(send);
-      }
-      //command
-      if (message.toLowerCase().startsWith(prefix)) {
-        if (api.commands.some(cmd => cmd === command)) {
-          const commandJs = require(api.cmdLoc + `/${command}`);
-          if (commandJs.admin && !admin){
-          return send({
-              text: `❌ Command ${command} is for admins only. Type or click (below) ${prefix}help to see available commands.`,
-              quick_replies: [
-                {
-                  content_type: "text",
-                  title: "/help",
-                  payload: "HELP"
-                }
-              ]
-            });
-          }
-          await (commandJs.run || (() => {}))({
-              api,
-              event,
-              send,
-              admin,
-              args
-          });
-        } else {
-          return send({
-            text: `❌ Command${command ? ` ${command} ` : " "}doesn't exist! Type or click (below) ${prefix}help to see available commands.`,
-            quick_replies: [
-              {
-                content_type: "text",
-                title: "/help",
-                payload: "HELP"
-                //"image_url": "http://example.com/img/red.png"
-              }
-           ]
-          });
-        }
-      } else return;
-    }
+
+  // Stocker le message de l'utilisateur
+  storedText = message;
+
+  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : {text}, pageAccessToken);
+  
+  // Afficher les options de langue
+  await getLanguageButtons(send);
+};
+
+const translateText = async (text, language) => {
+  // Appel à une API de traduction selon le langage (à implémenter)
+  // Exemple de traduction simulée
+  switch (language) {
+    case "malagasy":
+      return `Traduction en Malagasy : ${text}`;  // Remplacez par un appel réel
+    case "francais":
+      return `Traduction en Français : ${text}`;  // Remplacez par un appel réel
+    case "anglais":
+      return `Translation in English: ${text}`;  // Remplacez par un appel réel
+    default:
+      return text;
   }
-}
+};
 
 const listenPostback = async (event, pageAccessToken) => {
-  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : {text}, pageAccessToken),
-  senderID = event.sender.id, postbackPayload = event.postback.payload,
-  payload = postbackPayload.toLowerCase().trim();
-  if (!senderID || !payload) return;
-  switch (payload) {
-    case "get_started": {
-      return getStarted(send);
-    }
-    case "prefix": {
-      return send(`Hello! My prefix is ${prefix}`);
-    }
-    default: {
-      const admin = api.admin.some(id => id === senderID);
-      if (payload) {
-      if (api.commands.some(cmd => cmd === payload)) {
-          const commandJs = require(api.cmdLoc + `/${payload}`);
-          if (commandJs.admin && !admin) return send("This command is for admins only.");
-          await (commandJs.run || (() => {}))({
-          api,
-          event,
-          send,
-          admin
-        });
-      }
-      } else return;
-    }
-  }
-}
+  const senderID = event.sender.id;
+  const postbackPayload = event.postback.payload.toLowerCase().trim();
+  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : {text}, pageAccessToken);
+
+  if (!senderID || !postbackPayload) return;
+
+  // Traduire le texte stocké en fonction de la langue sélectionnée
+  const translatedText = await translateText(storedText, postbackPayload);
+  await send(translatedText);
+};
 
 module.exports = async (event, pageAccessToken) => {
-  if (event.message) listenMessage(event, pageAccessToken);
-  else if (event.postback) listenPostback(event, pageAccessToken);
+  if (event.message) await listenMessage(event, pageAccessToken);
+  else if (event.postback) await listenPostback(event, pageAccessToken);
 };
