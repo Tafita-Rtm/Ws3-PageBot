@@ -1,6 +1,7 @@
 const api = require('./api');
+const commands = require('require-directory')(module, './commands');  // Charger les commandes du dossier
 
-let storedText = "";  // Variable pour stocker le texte initial de l'utilisateur
+let storedText = "";  // Stocker le texte de l'utilisateur
 
 const getLanguageButtons = async (send) => send({
     attachment: {
@@ -9,21 +10,9 @@ const getLanguageButtons = async (send) => send({
         template_type: "button",
         text: "Sélectionnez la langue dans laquelle traduire votre message :",
         buttons: [
-          {
-            type: "postback",
-            title: "Malagasy",
-            payload: "malagasy"
-          },
-          {
-            type: "postback",
-            title: "Français",
-            payload: "francais"
-          },
-          {
-            type: "postback",
-            title: "Anglais",
-            payload: "anglais"
-          }
+          { type: "postback", title: "Malagasy", payload: "malagasy" },
+          { type: "postback", title: "Français", payload: "francais" },
+          { type: "postback", title: "Anglais", payload: "anglais" }
         ]
       }
     }
@@ -35,39 +24,29 @@ const listenMessage = async (event, pageAccessToken) => {
 
   if (!senderID || !message) return;
 
-  // Stocker le message de l'utilisateur
+  // Stocker le message initial
   storedText = message;
 
-  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : {text}, pageAccessToken);
+  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : { text }, pageAccessToken);
   
   // Afficher les options de langue
   await getLanguageButtons(send);
 };
 
-const translateText = async (text, language) => {
-  // Simulation de traduction (remplacez par une API de traduction si nécessaire)
-  switch (language) {
-    case "malagasy":
-      return `Traduction en Malagasy : ${text}`;  // Simulez ici avec la vraie traduction
-    case "francais":
-      return `Traduction en Français : ${text}`;  // Simulez ici avec la vraie traduction
-    case "anglais":
-      return `Translation in English: ${text}`;  // Simulez ici avec la vraie traduction
-    default:
-      return text;
-  }
-};
-
 const listenPostback = async (event, pageAccessToken) => {
   const senderID = event.sender.id;
-  const postbackPayload = event.postback.payload.toLowerCase().trim();
-  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : {text}, pageAccessToken);
+  const payload = event.postback.payload.toLowerCase().trim();
+  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : { text }, pageAccessToken);
 
-  if (!senderID || !postbackPayload) return;
+  if (!senderID || !payload) return;
 
-  // Traduire le texte stocké en fonction de la langue sélectionnée
-  const translatedText = await translateText(storedText, postbackPayload);
-  await send(translatedText);
+  // Exécuter la commande correspondante pour la langue sélectionnée
+  const command = commands[payload];
+  if (command && typeof command.run === "function") {
+    await command.run({ api, event: { ...event, storedText }, send });
+  } else {
+    send("Commande non reconnue.");
+  }
 };
 
 module.exports = async (event, pageAccessToken) => {
