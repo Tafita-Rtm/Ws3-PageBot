@@ -1,55 +1,62 @@
 const api = require('./api');
-const commands = require('require-directory')(module, './commands');  // Charger les commandes du dossier
+const prefix = "";  // Pas de préfixe
+let storedText = "";  // Texte stocké pour la traduction
 
-let storedText = "";  // Stocker le texte de l'utilisateur
+// Chargement dynamique des commandes (langues)
+const commands = await api.loadCommands();
 
+// Affiche les options de langue
 const getLanguageButtons = async (send) => send({
-    attachment: {
-      type: "template",
-      payload: {
-        template_type: "button",
-        text: "Sélectionnez la langue dans laquelle traduire votre message :",
-        buttons: [
-          { type: "postback", title: "Malagasy", payload: "malagasy" },
-          { type: "postback", title: "Français", payload: "francais" },
-          { type: "postback", title: "Anglais", payload: "anglais" }
-        ]
-      }
+  attachment: {
+    type: "template",
+    payload: {
+      template_type: "button",
+      text: "Sélectionnez la langue dans laquelle vous voulez traduire votre message :",
+      buttons: [
+        { type: "postback", title: "Malagasy", payload: "malagasy" },
+        { type: "postback", title: "Français", payload: "francais" },
+        { type: "postback", title: "Anglais", payload: "anglais" }
+      ]
     }
+  }
 });
 
-const listenMessage = async (event, pageAccessToken) => {
+// Gère les messages texte
+const listenMessage = async (event) => {
   const senderID = event.sender.id;
   const message = event.message.text;
 
   if (!senderID || !message) return;
 
-  // Stocker le message initial
+  // Stocke le message initial de l'utilisateur
   storedText = message;
 
-  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : { text }, pageAccessToken);
-  
-  // Afficher les options de langue
+  // Fonction d'envoi
+  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : { text });
+
+  // Affiche les boutons de sélection de langue
   await getLanguageButtons(send);
 };
 
-const listenPostback = async (event, pageAccessToken) => {
+// Gère les clics sur les boutons de langue
+const listenPostback = async (event) => {
   const senderID = event.sender.id;
   const payload = event.postback.payload.toLowerCase().trim();
-  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : { text }, pageAccessToken);
+  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : { text });
 
   if (!senderID || !payload) return;
 
-  // Exécuter la commande correspondante pour la langue sélectionnée
+  // Exécute la commande de traduction de la langue choisie
   const command = commands[payload];
   if (command && typeof command.run === "function") {
-    await command.run({ api, event: { ...event, storedText }, send });
+    await command.run({ text: storedText, send });
   } else {
-    send("Commande non reconnue.");
+    send("Désolé, cette langue n'est pas encore prise en charge.");
   }
 };
 
-module.exports = async (event, pageAccessToken) => {
-  if (event.message) await listenMessage(event, pageAccessToken);
-  else if (event.postback) await listenPostback(event, pageAccessToken);
+// Fonction principale pour écouter les messages ou les postbacks
+module.exports = async (event) => {
+  if (event.message) await listenMessage(event);
+  else if (event.postback) await listenPostback(event);
 };
