@@ -1,7 +1,7 @@
 const axios = require("axios");
 const fs = require("fs");
 const cmdLoc = __dirname + "/commands";
-const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN || "EAASdkqwWhMsBO2iyezebDQMJZCL6tnembRvSDA4t0wW5mSaSTyCLvlxQswGBAv1pJNxPtfRZCZCZAeFWEvo92fWh3GZBY0ZAZBBTflei3C40upw7ZA8ZAygYhgZBZCceZClGgCG8tg2RSqk56wQBhnVPaXmnMVWxPzZC1NuuDbzZBolzxG55U94FdvIo5EJh60KCHsLrZApUgZDZD";
+const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN || "EAASdkqwWhMsBO5lKsUMqCjS5FvraTJyWTsuIZCZCol4ZBce08fl17igtPfQ2DJCiDWe5sprrKR7Ij6fh1wDLYX3iKUQwUdoWuerR1DiXysjtEQn8gw6dntQ8ZCgZB87NMB4pguaWYyxZApQhid0wZAsjV0x6ZAOMTiWx4Up9ZBXQYStgcRxyDZBoNZBioJefgUQWeEjjAZDZD";
 
 const api = {
   async sendMessage(senderId, message) {
