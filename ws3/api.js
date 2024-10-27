@@ -1,37 +1,114 @@
+const token = "EAASdkqwWhMsBO5lKsUMqCjS5FvraTJyWTsuIZCZCol4ZBce08fl17igtPfQ2DJCiDWe5sprrKR7Ij6fh1wDLYX3iKUQwUdoWuerR1DiXysjtEQn8gw6dntQ8ZCgZB87NMB4pguaWYyxZApQhid0wZAsjV0x6ZAOMTiWx4Up9ZBXQYStgcRxyDZBoNZBioJefgUQWeEjjAZDZD";
+const PAGE_ACCESS_TOKEN = process.env.token || token;
+const request = require('request');
 const axios = require("axios");
-const fs = require("fs");
 const cmdLoc = __dirname + "/commands";
-const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN || "EAASdkqwWhMsBO5lKsUMqCjS5FvraTJyWTsuIZCZCol4ZBce08fl17igtPfQ2DJCiDWe5sprrKR7Ij6fh1wDLYX3iKUQwUdoWuerR1DiXysjtEQn8gw6dntQ8ZCgZB87NMB4pguaWYyxZApQhid0wZAsjV0x6ZAOMTiWx4Up9ZBXQYStgcRxyDZBoNZBioJefgUQWeEjjAZDZD";
-
-const api = {
-  async sendMessage(senderId, message) {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const response = await axios.post(`https://graph.facebook.com/v11.0/me/messages`, {
-          recipient: { id: senderId },
-          message
-        }, {
-          params: { access_token: PAGE_ACCESS_TOKEN },
-          headers: { "Content-Type": "application/json" }
+const temp = __dirname + "/temp";
+const fs = require("fs");
+const prefix = "/";
+const commands = [];
+const descriptions = [];
+module.exports = {
+  PAGE_ACCESS_TOKEN,
+  async loadCommands() {
+    const commandsPayload = [];
+    fs.readdir(cmdLoc, {}, async (err, files) => {
+      for await (const name of files) {
+        const readCommand = require(cmdLoc + "/" + name);
+        const commandName = readCommand.name || (name.replace(".js", "")).toLowerCase();
+        const description = readCommand.description || "No description provided.";
+        commands.push(commandName);
+        descriptions.push(description);
+        commandsPayload.push({
+          name: `${prefix + commandName}`,
+          description
         });
-        resolve(response.data);
-      } catch (error) {
-        console.error("Erreur lors de l'envoi du message:", error);
-        reject(error);
+        console.log(commandName, "Loaded");
+      }
+      console.log("Wait...");
+    });
+    const dataCmd = await axios.get(`https://graph.facebook.com/v21.0/me/messenger_profile`, {
+      params: {
+        fields: "commands",
+        access_token: PAGE_ACCESS_TOKEN
       }
     });
-  },
-
-  async loadCommands() {
-    const commands = {};
-    const files = fs.readdirSync(cmdLoc);
-    files.forEach(file => {
-      const command = require(`${cmdLoc}/${file}`);
-      const commandName = file.replace(".js", "");
-      commands[commandName] = command;
+    if (dataCmd.data.data.commands){
+    if (dataCmd.data.data[0].commands[0].commands.length === commandsPayload.length)
+    return console.log("Commands not changed");
+    }
+    const loadCmd = await axios.post(`https://graph.facebook.com/v21.0/me/messenger_profile?access_token=${PAGE_ACCESS_TOKEN}`, {
+      commands: [
+        {
+          locale: "default",
+          commands: commandsPayload
+      }
+    ]
+    }, {
+      headers: {
+        "Content-Type": "application/json"
+      }
     });
-    return commands;
-  }
-};
+    if (loadCmd.data.result === "success")
+      console.log("Commands loaded!")
+    else
+      console.log("Failed to load commands");
+    return;
+  },
+  commands,
+  descriptions,
+  cmdLoc,
+  temp,
+  prefix,
+  admin: [
+"8439419946124905",
+"9353065101379295"
+],
+  async sendMessage(senderId, message, pageAccessToken) {
+    return await new Promise(async (resolve, reject) => {
+      const sendMsg = await axios.post(`https://graph.facebook.com/v21.0/me/messages`,
+      {
+        recipient: { id: senderId },
+        message
+      }, {
+        params: {
+          access_token: pageAccessToken
+        },
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      const data = sendMsg.data;
+      if (data.error) {
+        console.error('Error sending message:', data.error);
+        reject(data.error);
+      }
+      resolve(data);
+    });
+  },
+  async publishPost(message, access_token) {
+    return await new Promise(async (resolve, reject) => {
+    const res = await axios.post(`https://graph.facebook.com/v21.0/me/feed`,
+    {
+      message,
+      access_token
+    }, {
+      params: {
+        access_token
+      },
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+    if (!res) reject();
+    resolve(res.data);
+    });
+  },
+  introduction: `Hello, I am WieAI and I am your assistant.
+Type ${prefix}help for available commands.
 
-module.exports = api;
+Note: WieAI is highly recommended to use Messenger because some features won't work and limited.
+🤖 Created by Neth Aceberos`,
+  api_josh: "https://deku-rest-apis.ooguy.com",
+  echavie: "https://echavie3.nethprojects.workers.dev"
+}
