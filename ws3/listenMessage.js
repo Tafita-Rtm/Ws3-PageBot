@@ -12,17 +12,17 @@ const getLanguageButtons = async (send) => send({
           {
             type: "postback",
             title: "Malagasy",
-            payload: "MALAGASY"
+            payload: "malagasy"
           },
           {
             type: "postback",
             title: "Français",
-            payload: "FRANCAIS"
+            payload: "francais"
           },
           {
             type: "postback",
             title: "Anglais",
-            payload: "ANGLAIS"
+            payload: "anglais"
           }
         ]
       }
@@ -45,15 +45,14 @@ const listenMessage = async (event, pageAccessToken) => {
 };
 
 const translateText = async (text, language) => {
-  // Appel à une API de traduction selon le langage (à implémenter)
-  // Exemple de traduction simulée
+  // Simulation de traduction (remplacez par une API de traduction si nécessaire)
   switch (language) {
     case "malagasy":
-      return `Traduction en Malagasy : ${text}`;  // Remplacez par un appel réel
+      return `Traduction en Malagasy : ${text}`;  // Simulez ici avec la vraie traduction
     case "francais":
-      return `Traduction en Français : ${text}`;  // Remplacez par un appel réel
+      return `Traduction en Français : ${text}`;  // Simulez ici avec la vraie traduction
     case "anglais":
-      return `Translation in English: ${text}`;  // Remplacez par un appel réel
+      return `Translation in English: ${text}`;  // Simulez ici avec la vraie traduction
     default:
       return text;
   }
