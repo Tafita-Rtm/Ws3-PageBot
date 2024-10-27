@@ -1,129 +1,55 @@
-const api = require('./api');
-const prefix = api.prefix;
+let activeCommand = null; // Variable pour stocker la commande active (ex: "ai", "gemini")
 
-const getStarted = async (send) => send({
-    attachment: {
-      type: "template",
-      payload: {
-        template_type: "button",
-        text: api.introduction,
-        buttons: [
-          {
-            type: "postback",
-            title: "Commands",
-            payload: "HELP"
-          },
-          {
-            type: "postback",
-            title: "About",
-            payload: "ABOUT"
-          },
-          {
-            type: "postback",
-            title: "Prefix",
-            payload: "PREFIX"
-          }
-        ]
-      }
-}});
 const listenMessage = async (event, pageAccessToken) => {
   const senderID = event.sender.id;
   const message = event.message.text;
   if (!senderID || !message) return;
-  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : {text}, pageAccessToken),
-  [command, ...args] = (message || "")
-    .trim()
-    .toLowerCase()
-    .startsWith(prefix.toLowerCase()) ?
-    (message || "")
-    .trim()
-    .substring(prefix.length)
-    .trim()
-    .split(/\s+/)
-    .map(arg => arg.trim()) : [],
-    admin = api.admin.some(id => id === senderID);
-    switch (message.toLowerCase().trim()) {
-    case "prefix": {
-      return send(`Hello! My prefix is ${prefix}`);
+
+  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : {text}, pageAccessToken);
+
+  // Convertir le message en minuscule et supprimer les espaces au début et à la fin
+  const normalizedMessage = message.toLowerCase().trim();
+
+  // Commande spéciale pour activer une IA (ex : "ai", "chatgpt", "gemini")
+  if (["ai", "chatgpt", "gemini"].includes(normalizedMessage)) {
+    activeCommand = normalizedMessage; // Définir la commande active
+    return send(`🟢 Mode ${activeCommand} activé ! Posez vos questions.`);
+  }
+
+  // Commande pour arrêter l'IA active
+  if (normalizedMessage === "stop" || normalizedMessage === "help") {
+    activeCommand = null; // Désactiver la commande active
+    return send("🔴 Mode désactivé. Tapez une commande pour commencer ou utilisez 'help' pour voir les options.");
+  }
+
+  // Vérifier si une commande est activée
+  if (activeCommand) {
+    // Exécuter la logique de la commande active (par exemple, envoyer le message à l'IA)
+    return handleActiveCommand(activeCommand, message, send);
+  }
+
+  // Code existant pour les autres commandes sans préfixe
+  switch (normalizedMessage) {
+    case "help": {
+      return send("Liste des commandes disponibles : ai, chatgpt, gemini, stop.");
     }
     default: {
-      if (!message) return;
-      if (["hi", "wie", "wieai", "wiegine", "get started"]
-        .some(text => text === message.toLowerCase().trim())) {
-         return getStarted(send);
-      }
-      //command
-      if (message.toLowerCase().startsWith(prefix)) {
-        if (api.commands.some(cmd => cmd === command)) {
-          const commandJs = require(api.cmdLoc + `/${command}`);
-          if (commandJs.admin && !admin){
-          return send({
-              text: `❌ Command ${command} is for admins only. Type or click (below) ${prefix}help to see available commands.`,
-              quick_replies: [
-                {
-                  content_type: "text",
-                  title: "/help",
-                  payload: "HELP"
-                }
-              ]
-            });
-          }
-          await (commandJs.run || (() => {}))({
-              api,
-              event,
-              send,
-              admin,
-              args
-          });
-        } else {
-          return send({
-            text: `❌ Command${command ? ` ${command} ` : " "}doesn't exist! Type or click (below) ${prefix}help to see available commands.`,
-            quick_replies: [
-              {
-                content_type: "text",
-                title: "/help",
-                payload: "HELP"
-                //"image_url": "http://example.com/img/red.png"
-              }
-           ]
-          });
-        }
-      } else return;
+      return send("Commande non reconnue. Tapez 'help' pour voir les options.");
     }
   }
-}
+};
 
-const listenPostback = async (event, pageAccessToken) => {
-  const send = async text => api.sendMessage(senderID, typeof text === "object" ? text : {text}, pageAccessToken),
-  senderID = event.sender.id, postbackPayload = event.postback.payload,
-  payload = postbackPayload.toLowerCase().trim();
-  if (!senderID || !payload) return;
-  switch (payload) {
-    case "get_started": {
-      return getStarted(send);
-    }
-    case "prefix": {
-      return send(`Hello! My prefix is ${prefix}`);
-    }
-    default: {
-      const admin = api.admin.some(id => id === senderID);
-      if (payload) {
-      if (api.commands.some(cmd => cmd === payload)) {
-          const commandJs = require(api.cmdLoc + `/${payload}`);
-          if (commandJs.admin && !admin) return send("This command is for admins only.");
-          await (commandJs.run || (() => {}))({
-          api,
-          event,
-          send,
-          admin
-        });
-      }
-      } else return;
-    }
+// Fonction pour gérer la commande active en mode continu
+const handleActiveCommand = async (command, message, send) => {
+  // Logique pour chaque IA (ici, simplifié)
+  switch (command) {
+    case "ai":
+      return send(`🤖 AI : Vous avez dit "${message}" ? Voici ma réponse.`);
+    case "chatgpt":
+      return send(`🤖 ChatGPT : Vous avez dit "${message}" ? Voici ma réponse.`);
+    case "gemini":
+      return send(`🤖 Gemini : Vous avez dit "${message}" ? Voici ma réponse.`);
+    default:
+      return send("Erreur : Commande inconnue.");
   }
-}
-
-module.exports = async (event, pageAccessToken) => {
-  if (event.message) listenMessage(event, pageAccessToken);
-  else if (event.postback) listenPostback(event, pageAccessToken);
 };
